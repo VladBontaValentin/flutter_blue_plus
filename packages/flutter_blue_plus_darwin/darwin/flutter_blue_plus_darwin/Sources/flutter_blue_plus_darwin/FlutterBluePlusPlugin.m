@@ -1391,14 +1391,16 @@ didDiscoverCharacteristicsForService:(CBService *)service
     }
 
     [self.servicesToDiscover removeObject:service];
-    [self.characteristicsToDiscover addObjectsFromArray:service.characteristics];
 
-    // Loop through and discover descriptors for characteristics
+    // Tymewear fork: descriptor discovery is skipped. It costs one round trip per
+    // characteristic on every connect, and notifications do not need it:
+    // setNotifyValue uses CoreBluetooth's own subscribe call, which writes the CCCD.
     for (CBCharacteristic *c in [service characteristics])
     {
         Log(LDEBUG, @"    chr: %@", [c.UUID uuidStr]);
-        [peripheral discoverDescriptorsForCharacteristic:c];
     }
+
+    [self completeDiscoveryIfReady:peripheral error:error];
 }
 
 
@@ -1423,6 +1425,11 @@ didDiscoverCharacteristicsForService:(CBService *)service
 
     // have we finished discovering?
     [self.characteristicsToDiscover removeObject:characteristic];
+    [self completeDiscoveryIfReady:peripheral error:error];
+}
+
+- (void)completeDiscoveryIfReady:(CBPeripheral *)peripheral error:(NSError *)error
+{
     if (self.servicesToDiscover.count > 0 || self.characteristicsToDiscover.count > 0)
     {
         return; // Still discovering
