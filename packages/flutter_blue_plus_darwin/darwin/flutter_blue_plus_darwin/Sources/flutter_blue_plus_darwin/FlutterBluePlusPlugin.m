@@ -1368,12 +1368,19 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
         Log(LDEBUG, @"didDiscoverServices:");
     }
 
-    // discover characteristics and included services
+    // discover characteristics
+    // Tymewear fork: included (secondary) services are not discovered. Each
+    // one costs a round trip per service, and its callback re-discovered the
+    // parent's characteristics a second time. Our devices do not use them.
     [self.servicesToDiscover addObjectsFromArray:peripheral.services];
     for (CBService *s in [peripheral services]) {
         Log(LDEBUG, @"  svc: %@", [s.UUID uuidStr]);
         [peripheral discoverCharacteristics:nil forService:s];
-        [peripheral discoverIncludedServices:nil forService:s];
+    }
+
+    // no services: no characteristic callback will arrive to finish discovery
+    if (peripheral.services.count == 0) {
+        [self completeDiscoveryIfReady:peripheral error:error];
     }
 }
 
